@@ -69,7 +69,7 @@ public class SphereMesh
         this.Resolution = resolution;
         numOfDivisions = Mathf.Max(0, resolution);
         numOfVertsPerFace = ((numOfDivisions + 3) * (numOfDivisions + 3) - (numOfDivisions + 3)) / 2;
-        int numOfTrisPerFace = (numOfDivisions + 1) * (numOfDivisions + 1);
+        numOfTrisPerFace = (numOfDivisions + 1) * (numOfDivisions + 1);
         vertices = new FixedSizeList<Vector3>(10 * numOfDivisions * numOfDivisions + 20 * numOfDivisions + 12);
         triangles = new FixedSizeList<int>(numOfTrisPerFace * initialTriangles.Length);
 
@@ -85,16 +85,12 @@ public class SphereMesh
             int vertexIndiceC = initialTriangles[i+2];
 
             edgeAC = CreateEdge(Mathf.Min(vertexIndiceA, vertexIndiceC), Mathf.Max(vertexIndiceA, vertexIndiceC), edgeMap, i);
-            
-            edgeAB = CreateEdge(Mathf.Min(vertexIndiceA, vertexIndiceB), Mathf.Max(vertexIndiceA, vertexIndiceB), edgeMap, i);
-            
+            edgeAB = CreateEdge(Mathf.Min(vertexIndiceA, vertexIndiceB), Mathf.Max(vertexIndiceA, vertexIndiceB), edgeMap, i);          
             edgeCB = CreateEdge(Mathf.Min(vertexIndiceC, vertexIndiceB), Mathf.Max(vertexIndiceC, vertexIndiceB), edgeMap, i);
 
             edgeAC = CheckReverseEdge(edgeAC, vertexIndiceA);
             edgeAB = CheckReverseEdge(edgeAB, vertexIndiceA);
             edgeCB = CheckReverseEdge(edgeCB, vertexIndiceC);
-
-            
 
             CreateFace(edgeAC, edgeAB, edgeCB);
         }
@@ -105,7 +101,6 @@ public class SphereMesh
     int[] CreateEdge(int firstVertex, int secondVertex, Dictionary<string, int[]> edgeMap, int edgeIndex)
     {
         int[] edge = new int[numOfDivisions + 2];
-
         edge[0] = firstVertex;
         edge[edge.Length - 1] = secondVertex;
         string edgeKey = $"{edge[0]}_{edge[edge.Length - 1]}";
@@ -114,22 +109,21 @@ public class SphereMesh
         {
             for (int i = 0; i < numOfDivisions; i++)
             {
-                
                 float distBetweenVerts = (i + 1f) / (numOfDivisions + 1f);
                 edge[i + 1] = vertices.nextIndex;
                 vertices.Add(Vector3.Slerp(vertices.items[firstVertex], vertices.items[secondVertex], distBetweenVerts));
-
                 
             }
             edgeMap.Add(edgeKey, edge);
         }
-        if (edgeMap.ContainsKey(edgeKey))
+
+        else if (edgeMap.ContainsKey(edgeKey))
         {
             edge = edgeMap[edgeKey];
         }
 
         return edge;
-    }
+    } // Creates or fetches edge based if it exists inside the dictionary
 
     int[] CheckReverseEdge(int[] edge, int vertex)
     {
@@ -138,7 +132,7 @@ public class SphereMesh
             System.Array.Reverse(edge);
         }
         return edge;
-    }
+    } // Checks if the edge is lined up with the others, if not, reverses it
 
     void CreateFace(int[] sideA, int[] sideB, int[] sideC)
     {
@@ -147,7 +141,7 @@ public class SphereMesh
         int numOfPointsinEdge = (numOfDivisions + 2);
 
         faceVertices.Add(sideA[0]);
-        for (int i = 1; i < numOfPointsinEdge - 1; i++)
+        for (int i = 1; i < numOfPointsinEdge - 1; i++) // Creates inner vertices
         {
             faceVertices.Add(sideA[i]);
             int numOfInnerPoints = i - 1;
@@ -164,23 +158,25 @@ public class SphereMesh
 
         }
 
-        for (int i = 0; i < numOfPointsinEdge; i++)
+        for (int i = 0; i < numOfPointsinEdge; i++) // Adds bottom vertices
         {
             faceVertices.Add(sideC[i]);
         }
 
+        // Triangulation
+
         int numOfRows = numOfDivisions + 1;
-        for (int row = 0; row < numOfRows; row++)
+        for (int row = 0; row < numOfRows; row++) // Loops through every new triangle row inside the face
         {   
             int topVertexIndice = (row * row + row) / 2;
             int bottomVertexIndice = (((row + 1) * (row + 1) + (row + 1)) / 2) + 1;
             int numOfTrisInRow = (row * 2) + 1;
 
-            for (int tri = 0; tri < numOfTrisInRow; tri++)
+            for (int tri = 0; tri < numOfTrisInRow; tri++) // Loops through every triangle in the row
             {
                 int vertexIndiceA, vertexIndiceB, vertexIndiceC;
 
-                if (tri % 2 == 0)
+                if (tri % 2 == 0) // Checks whether the triangle is upside or not
                 {
                     vertexIndiceA = topVertexIndice;
                     vertexIndiceB = bottomVertexIndice;
@@ -191,7 +187,7 @@ public class SphereMesh
                 } else
                 {
                     vertexIndiceA = topVertexIndice;
-                    vertexIndiceB = bottomVertexIndice -1 ;
+                    vertexIndiceB = bottomVertexIndice -1;
                     vertexIndiceC = topVertexIndice - 1;
 
                 }

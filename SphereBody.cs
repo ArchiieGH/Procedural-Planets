@@ -16,23 +16,6 @@ public class SphereBody : MonoBehaviour
     Vector3[] vertices;
     Mesh mesh;
 
-    //static readonly float tau = (1f + Mathf.Sqrt(5f)) / 2f;
-    //static readonly Vector3[] initialVertices = new Vector3[12]
-    //{
-    //    new Vector3 (1, 0, tau),
-    //        new Vector3 (1, 0, -tau),
-    //        new Vector3 (-1, 0, tau),
-    //        new Vector3 (-1, 0, -tau),
-    //    new Vector3 (tau, 1, 0),
-    //        new Vector3 (-tau, 1, 0),
-    //        new Vector3 (tau, -1, 0),
-    //        new Vector3 (-tau, -1, 0),
-    //        new Vector3 (0, tau, 1),
-    //        new Vector3 (0, -tau, 1),
-    //        new Vector3 (0, tau, -1),
-    //        new Vector3 (0, -tau, -1)
-
-    //};
     static readonly Color[] colors = new Color[12]
     {
         new Color(1, 0, 0, 1), //red0
