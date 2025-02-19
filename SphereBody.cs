@@ -1,31 +1,38 @@
+using UnityEditor.UI;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 public class SphereBody : MonoBehaviour
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    int resolution = 100;
+    
 
     [SerializeField]
-    //MeshFilter meshFilter;
+    MeshFilter meshFilter;
+    [SerializeField]
+    MeshRenderer meshRenderer;
+    [Range(0, 30)]
+    public int resolution = 1;
+    Vector3[] vertices;
+    Mesh mesh;
 
-    static readonly float tau = (1f + Mathf.Sqrt(5f)) / 2f;
-    static readonly Vector3[] initialVertices = new Vector3[12]
-    {
-        new Vector3 (1, 0, tau),
-            new Vector3 (1, 0, -tau),
-            new Vector3 (-1, 0, tau),
-            new Vector3 (-1, 0, -tau),
-        new Vector3 (tau, 1, 0),
-            new Vector3 (-tau, 1, 0),
-            new Vector3 (tau, -1, 0),
-            new Vector3 (-tau, -1, 0),
-            new Vector3 (0, tau, 1),
-            new Vector3 (0, -tau, 1),
-            new Vector3 (0, tau, -1),
-            new Vector3 (0, -tau, -1)
+    //static readonly float tau = (1f + Mathf.Sqrt(5f)) / 2f;
+    //static readonly Vector3[] initialVertices = new Vector3[12]
+    //{
+    //    new Vector3 (1, 0, tau),
+    //        new Vector3 (1, 0, -tau),
+    //        new Vector3 (-1, 0, tau),
+    //        new Vector3 (-1, 0, -tau),
+    //    new Vector3 (tau, 1, 0),
+    //        new Vector3 (-tau, 1, 0),
+    //        new Vector3 (tau, -1, 0),
+    //        new Vector3 (-tau, -1, 0),
+    //        new Vector3 (0, tau, 1),
+    //        new Vector3 (0, -tau, 1),
+    //        new Vector3 (0, tau, -1),
+    //        new Vector3 (0, -tau, -1)
 
-    };
+    //};
     static readonly Color[] colors = new Color[12]
     {
         new Color(1, 0, 0, 1), //red0
@@ -46,32 +53,34 @@ public class SphereBody : MonoBehaviour
         GenerateMesh();
     }
 
+    private void Start()
+    {
+        GenerateMesh();
+    }
+
     void GenerateMesh()
     {
         Mesh mesh = new Mesh();
-        MeshFilter meshFilter = new MeshFilter();
         SphereMesh sphereMesh = new SphereMesh(resolution);
 
         mesh.vertices = sphereMesh.Vertices;
         mesh.triangles = sphereMesh.Triangles;
+        vertices = mesh.vertices;
 
         mesh.RecalculateNormals();
-        meshFilter.sharedMesh = mesh;
-        
+        meshFilter.mesh = mesh;
+
     }
 
-    private void OnDrawGizmos()
-    {
-        if ( initialVertices == null) { return; }
-        for (int i = 0; i < initialVertices.Length; i++)
-        {
-            //if (i == 0 ||i == 8 || i ==2)
-            //{
-            //    Gizmos.color = colors[i];
-            //    Gizmos.DrawSphere(initialVertices[i], .1f);
-            //}
-            Gizmos.color = colors[i];
-            Gizmos.DrawSphere(initialVertices[i], .1f);
-        }
-    }
+    //private void OnDrawGizmos()
+    //{
+    //    if (vertices == null) { return; }
+    //    int i = 0;
+    //    foreach (Vector3 vertice in vertices)
+    //    {
+    //        Gizmos.color = Color.red;
+    //        Gizmos.DrawSphere(vertice, .05f);
+    //        i++;
+    //    }
+    //}
 }

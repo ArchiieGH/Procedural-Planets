@@ -1,7 +1,12 @@
+using Mono.Cecil;
 using System.CodeDom.Compiler;
+using System.Collections.Generic;
+using System.Linq;
+using Unity.VisualScripting;
 using UnityEditor;
 using UnityEditor.MemoryProfiler;
 using UnityEngine;
+using UnityEngine.LowLevelPhysics;
 using UnityEngine.Rendering;
 using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
@@ -11,8 +16,6 @@ public class SphereMesh
     public readonly int[] Triangles;
     public readonly int Resolution;
 
-
-    int numOfDivisions;
     static readonly float tau = (1f + Mathf.Sqrt(5f)) / 2f;
     static readonly Vector3[] initialVertices = new Vector3[12]
     {
@@ -54,41 +57,178 @@ public class SphereMesh
         3, 5, 10,
         3, 7, 5
     };
-    static readonly int[] vertexPairs = new int[] {
 
-    };
-    static readonly Color[] colors = new Color[12]
-    {
-        new Color(1, 0, 0, 1), //red0
-        new Color(1, 0.5f, 0, 1), //orange1
-        new Color(1, 1, 0, 1), //yellow2
-        new Color(0.5f, 1, 0, 1), //yllowgren3
-        new Color(0, 1, 0, 1), //gren4
-        new Color(0, 1, 0.5f, 1), //green blue5
-        new Color(0, 1, 1, 1), //light blue6
-        new Color(0, 0.5f, 1, 1), //blue7
-        new Color(0, 0, 1, 1), //dark blue8
-        new Color(0.5f, 0, 1, 1), //purple9
-        new Color(1, 0, 1, 1), //light purlple10
-        new Color(1, 0, 0.5f, 1) //hotpink11
-    };
+    FixedSizeList<Vector3> vertices;
+    FixedSizeList<int> triangles;
+    int numOfDivisions;
+    int numOfVertsPerFace;
+    int numOfTrisPerFace;
 
     public SphereMesh(int resolution)
     {
         this.Resolution = resolution;
         numOfDivisions = Mathf.Max(0, resolution);
+        numOfVertsPerFace = ((numOfDivisions + 3) * (numOfDivisions + 3) - (numOfDivisions + 3)) / 2;
+        int numOfTrisPerFace = (numOfDivisions + 1) * (numOfDivisions + 1);
+        vertices = new FixedSizeList<Vector3>(10 * numOfDivisions * numOfDivisions + 20 * numOfDivisions + 12);
+        triangles = new FixedSizeList<int>(numOfTrisPerFace * initialTriangles.Length);
 
+        vertices.AddRange(initialVertices);
 
-        Vertices = initialVertices;
-        Triangles = initialTriangles;
+        Dictionary<string, int[]> edgeMap = new Dictionary<string, int[]>(30);
+        int[] edgeAC, edgeAB, edgeCB;
+
+        for (int i = 0; i < initialTriangles.Length; i+=3)
+        {
+            int vertexIndiceA = initialTriangles[i];
+            int vertexIndiceB = initialTriangles[i+1];
+            int vertexIndiceC = initialTriangles[i+2];
+
+            edgeAC = CreateEdge(Mathf.Min(vertexIndiceA, vertexIndiceC), Mathf.Max(vertexIndiceA, vertexIndiceC), edgeMap, i);
+            
+            edgeAB = CreateEdge(Mathf.Min(vertexIndiceA, vertexIndiceB), Mathf.Max(vertexIndiceA, vertexIndiceB), edgeMap, i);
+            
+            edgeCB = CreateEdge(Mathf.Min(vertexIndiceC, vertexIndiceB), Mathf.Max(vertexIndiceC, vertexIndiceB), edgeMap, i);
+
+            edgeAC = CheckReverseEdge(edgeAC, vertexIndiceA);
+            edgeAB = CheckReverseEdge(edgeAB, vertexIndiceA);
+            edgeCB = CheckReverseEdge(edgeCB, vertexIndiceC);
+
+            
+
+            CreateFace(edgeAC, edgeAB, edgeCB);
+        }
+        Vertices = vertices.items;
+        Triangles = triangles.items;
     }
 
-    // Update is called once per frame
-    public void GenerateMesh()
+    int[] CreateEdge(int firstVertex, int secondVertex, Dictionary<string, int[]> edgeMap, int edgeIndex)
+    {
+        int[] edge = new int[numOfDivisions + 2];
+
+        edge[0] = firstVertex;
+        edge[edge.Length - 1] = secondVertex;
+        string edgeKey = $"{edge[0]}_{edge[edge.Length - 1]}";
+
+        if (!edgeMap.ContainsKey(edgeKey))
+        {
+            for (int i = 0; i < numOfDivisions; i++)
+            {
+                
+                float distBetweenVerts = (i + 1f) / (numOfDivisions + 1f);
+                edge[i + 1] = vertices.nextIndex;
+                vertices.Add(Vector3.Slerp(vertices.items[firstVertex], vertices.items[secondVertex], distBetweenVerts));
+
+                
+            }
+            edgeMap.Add(edgeKey, edge);
+        }
+        if (edgeMap.ContainsKey(edgeKey))
+        {
+            edge = edgeMap[edgeKey];
+        }
+
+        return edge;
+    }
+
+    int[] CheckReverseEdge(int[] edge, int vertex)
+    {
+        if (edge[0] != vertex)
+        {
+            System.Array.Reverse(edge);
+        }
+        return edge;
+    }
+
+    void CreateFace(int[] sideA, int[] sideB, int[] sideC)
     {
 
+        FixedSizeList<int> faceVertices = new FixedSizeList<int>(numOfVertsPerFace);
+        int numOfPointsinEdge = (numOfDivisions + 2);
+
+        faceVertices.Add(sideA[0]);
+        for (int i = 1; i < numOfPointsinEdge - 1; i++)
+        {
+            faceVertices.Add(sideA[i]);
+            int numOfInnerPoints = i - 1;
+            Vector3 sideAVertex = vertices.items[sideA[i]];
+            Vector3 sideBVertex = vertices.items[sideB[i]];
+            for (int j = 0; j < numOfInnerPoints; j++)
+            {
+                
+                float distBetweenVerts = (j + 1f) / (numOfInnerPoints + 1f);
+                faceVertices.Add(vertices.nextIndex);
+                vertices.Add(Vector3.Slerp(sideAVertex, sideBVertex, distBetweenVerts));
+            }
+            faceVertices.Add(sideB[i]);
+
+        }
+
+        for (int i = 0; i < numOfPointsinEdge; i++)
+        {
+            faceVertices.Add(sideC[i]);
+        }
+
+        int numOfRows = numOfDivisions + 1;
+        for (int row = 0; row < numOfRows; row++)
+        {   
+            int topVertexIndice = (row * row + row) / 2;
+            int bottomVertexIndice = (((row + 1) * (row + 1) + (row + 1)) / 2) + 1;
+            int numOfTrisInRow = (row * 2) + 1;
+
+            for (int tri = 0; tri < numOfTrisInRow; tri++)
+            {
+                int vertexIndiceA, vertexIndiceB, vertexIndiceC;
+
+                if (tri % 2 == 0)
+                {
+                    vertexIndiceA = topVertexIndice;
+                    vertexIndiceB = bottomVertexIndice;
+                    vertexIndiceC = bottomVertexIndice - 1;
+                    topVertexIndice++;
+                    bottomVertexIndice++;
+
+                } else
+                {
+                    vertexIndiceA = topVertexIndice;
+                    vertexIndiceB = bottomVertexIndice -1 ;
+                    vertexIndiceC = topVertexIndice - 1;
+
+                }
+
+                triangles.Add(faceVertices.items[vertexIndiceA]);
+                triangles.Add(faceVertices.items[vertexIndiceB]);
+                triangles.Add(faceVertices.items[vertexIndiceC]);
+            }
+        }
 
     }
 
-    
+
+    // Convenience classes: - Sebastian Lague SphereMesh Episode 2
+    public class FixedSizeList<T>
+    {
+        public T[] items;
+        public int nextIndex;
+
+        public FixedSizeList(int size)
+        {
+            items = new T[size];
+        }
+
+        public void Add(T item)
+        {
+            items[nextIndex] = item;
+            nextIndex++;
+        }
+
+        public void AddRange(IEnumerable<T> items)
+        {
+            foreach (var item in items)
+            {
+                Add(item);
+            }
+        }
+    }
+
 }
